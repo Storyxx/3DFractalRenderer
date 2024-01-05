@@ -53,3 +53,11 @@ public abstract class FileWatcher extends TimerTask {
   
   protected abstract void onChange( File file );
 }
+
+void keyPressed() {
+  if (key == 'p') {
+    long unixTime = System.currentTimeMillis() / 1000L;
+    println("screenshot saved");
+    save("./results/"+Long.toString(unixTime)+".png");
+  }
+}
