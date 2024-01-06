@@ -10,8 +10,9 @@ uniform layout(binding = 4, rgba32f) writeonly image2D nextFrame;
 
 uniform vec2 mouse;
 uniform float time;
-//uniform sampler2D accumulation;
 uniform int frame;
+uniform vec3 eye;
+uniform vec3 forward;
 
 #define MAX_ITER 100
 #define EPSILON 0.001
@@ -33,7 +34,7 @@ vec3 hash( uvec3 x ) {
 float boxSDF(vec3 p, vec3 b) {
     float r = 0.1;
     vec3 q = abs(p) - b;
-    return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+    return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0) - 0.01;
 }
 
 float planeSDF(vec3 p) {
@@ -137,7 +138,7 @@ vec3 secondaryRay(vec3 pos, vec3 dir, vec3 randDir) {
 
             vec3 lightDir = normalize(lightPos - pos);
 
-            float shadow = shadowRay(pos+normal*0.01, lightDir);
+            float shadow = shadowRay(pos+normal*0.001, lightDir);
 
             return color*shadow;
         } else if (totalDist > 100.0) {
@@ -170,8 +171,8 @@ vec3 marchRay(vec3 pos, vec3 dir, vec3 randDir) {
 
             vec3 lightDir = normalize(lightPos - pos);
 
-            float shadow = shadowRay(pos+normal*0.01, lightDir);
-            vec3 secondary = secondaryRay(pos+normal*0.01, randDir, randDir);
+            float shadow = shadowRay(pos+normal*0.001, lightDir);
+            vec3 secondary = secondaryRay(pos+normal*0.001, randDir, randDir);
 
             vec3 result = color * secondary + color * shadow;
 
@@ -194,10 +195,6 @@ void main() {
     float theta = 2.0 * PI * (1.0-mouse.x);
     float phi = 0.01 + (PI-0.01) * mouse.y;
 
-    vec3 eye = vec3(sin(phi)*sin(theta), cos(phi), sin(phi)*cos(theta)) * 5.0;
-    vec3 center = vec3(0, 0, 0);
-
-    vec3 forward = normalize(center - eye);
     vec3 right = normalize(cross(forward, vec3(0, 1, 0)));
     vec3 up = cross(right, forward);
 
@@ -217,12 +214,6 @@ void main() {
     vec3 randDir = normalize(rand * 2.0 - 1.0);
 
     color = marchRay(pos, dir, randDir);
-
-    /*vec3 average = texture(accumulation, vec2(uv.x, 1.0-uv.y)).rgb;
-    average -= average / float(frame);
-    average += color / float(frame);*/
-    
-    //colorOut = vec4(average, 1.0);
 
     vec3 average = imageLoad(lastFrame, ivec2(uv.xy * 800.0)).rgb;
     average -= average / float(frame);
