@@ -15,6 +15,7 @@ uniform vec3 eye;
 uniform vec3 forward;
 
 #define MAX_ITER 100
+#define MAX_DIST 100.0
 #define EPSILON 0.001
 #define PI 3.1415926353
 
@@ -34,7 +35,7 @@ vec3 hash( uvec3 x ) {
 float boxSDF(vec3 p, vec3 b) {
     float r = 0.1;
     vec3 q = abs(p) - b;
-    return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0) - 0.01;
+    return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
 }
 
 float planeSDF(vec3 p) {
@@ -44,8 +45,7 @@ float planeSDF(vec3 p) {
 float rootsSDF(vec3 p) {
     float b1 = boxSDF(p, vec3(0.2, 1, 0.2));
     float b2 = boxSDF(p-vec3(0.2,0,0), vec3(1, 0.1, 0.1));
-    float b3 = boxSDF(p-vec3(1.1,0.5,0), vec3(0.1, 0.5, 0.1));
-    return min(min(b1, b2),b3);
+    return min(b1, b2);
 }
 
 float fractalDE(vec3 p) {
@@ -56,7 +56,7 @@ float fractalDE(vec3 p) {
 
     float dist = rootsSDF(p);
 
-    for (float i=0; i<8; i+=1.0) {
+    for (float i=0; i<0; i+=1.0) {
         float scale = pow(2.0, i);
         vec3 p2 = p-vec3(1.1,0.5,0)/scale;
         p2.xz *= mat2(cos(PI*0.25), -sin(PI*0.25),
@@ -110,7 +110,7 @@ float shadowRay(vec3 pos, vec3 dir) {
 
         pos += dir*dist;
 
-        if (dist < 0.001 || i==MAX_ITER-1) {
+        if (dist < 0.0001 || i==MAX_ITER-1) {
             return 0.0;
         } else if (totalDist > 100.0) {
             return 1.0;
@@ -133,7 +133,7 @@ vec3 secondaryRay(vec3 pos, vec3 dir, vec3 randDir) {
 
         pos += dir*dist;
 
-        if (dist < 0.001 || i==MAX_ITER-1) {
+        if (dist < 0.0001 || i==MAX_ITER-1) {
             vec3 normal = estimateNormal(pos);
 
             vec3 lightDir = normalize(lightPos - pos);
@@ -142,7 +142,7 @@ vec3 secondaryRay(vec3 pos, vec3 dir, vec3 randDir) {
 
             return color*shadow;
         } else if (totalDist > 100.0) {
-            return vec3(1.0);//vec3(max(0.0, dot(-lightDir, dir)));
+            return vec3(1.0);
         }
     }
     return vec3(0);
@@ -181,7 +181,7 @@ vec3 marchRay(vec3 pos, vec3 dir, vec3 randDir) {
 
             return result;
         } else if (totalDist > 100.0) {
-            return vec3(0);
+            return vec3(1.0); // white sky
         }
     }
     return vec3(1,1,0);

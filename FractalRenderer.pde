@@ -33,6 +33,7 @@ void setup() {
   TimerTask task = new FileWatcher(new File(sketchPath(fragmentShaderFile))) {
     protected void onChange(File file) {
       fractalShader = loadShader("shaders/fractal.frag", "shaders/quad.vert");
+      frame = 1;
     }
   };
   
@@ -85,10 +86,7 @@ void draw() {
     robot.mouseMove(winX+width/2, winY+height/2);
     frame = 1;
   }
-  
-  
-  
-  fractalShader.set("mouse", mouseX / float(width), mouseY / float(height));
+    
   fractalShader.set("time", frameCount/100.0);
   fractalShader.set("frame", frame);
   fractalShader.set("eye", camPos);
@@ -159,8 +157,8 @@ boolean updateCamera() {
     float xDiff = width/2 - mouseX;
     float yDiff = height/2 - mouseY;
     
-    theta -= xDiff * 0.01;
-    phi -= yDiff * 0.01;
+    theta += xDiff * 0.01;
+    phi += yDiff * 0.01;
     
     phi = constrain(phi, 0.01, PI-0.01);
     
