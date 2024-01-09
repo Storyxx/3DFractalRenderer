@@ -5,7 +5,7 @@ import java.nio.IntBuffer;
 import java.awt.Robot;
 import com.jogamp.newt.opengl.GLWindow;
 
-PShader fractalShader, swapShader;
+PShader fractalShader, newFractalShader, swapShader;
 PGraphics buffer;
 int frame;
 
@@ -28,12 +28,12 @@ void setup() {
  
   String fragmentShaderFile = "shaders/fractal.frag";
   fractalShader = loadShader(fragmentShaderFile, "shaders/quad.vert");
+  newFractalShader = fractalShader;
   swapShader = loadShader("shaders/swap.frag", "shaders/quad.vert");
       
   TimerTask task = new FileWatcher(new File(sketchPath(fragmentShaderFile))) {
     protected void onChange(File file) {
-      fractalShader = loadShader("shaders/fractal.frag", "shaders/quad.vert");
-      frame = 1;
+      newFractalShader = loadShader("shaders/fractal.frag", "shaders/quad.vert");
     }
   };
   
@@ -91,11 +91,31 @@ void draw() {
   fractalShader.set("frame", frame);
   fractalShader.set("eye", camPos);
   fractalShader.set("forward", camDir);
+  
+  newFractalShader.set("time", frameCount/100.0);
+  newFractalShader.set("frame", frame);
+  newFractalShader.set("eye", camPos);
+  newFractalShader.set("forward", camDir);
 
   buffer.beginDraw();
   gl3.glBindImageTexture(3, lastFrameTexture, 0, false, 0, GL2GL3.GL_READ_ONLY, GL2GL3.GL_RGBA32F);
   gl3.glBindImageTexture(4, nextFrameTexture, 0, false, 0, GL2GL3.GL_WRITE_ONLY, GL2GL3.GL_RGBA32F);
-  buffer.shader(fractalShader);
+  
+  if (fractalShader != newFractalShader) {
+    try {
+      buffer.shader(newFractalShader);
+      frame = 1;
+      fractalShader = newFractalShader;
+    } catch(RuntimeException e) {
+      buffer.shader(fractalShader);
+      println(e);
+      newFractalShader = fractalShader;
+    }
+  } else {
+    buffer.shader(fractalShader); 
+  }
+  
+  buffer.noStroke();
   buffer.rect(0, 0, width, height);
   buffer.endDraw();
   
@@ -210,4 +230,9 @@ void keyPressed() {
 
 void keyReleased() {
   keys.replace(key, false);
+}
+
+void mouseWheel(MouseEvent event) {
+  float e = event.getCount();
+  speed *= pow(2, e*0.1);
 }

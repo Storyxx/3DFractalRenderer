@@ -14,7 +14,7 @@ uniform int frame;
 uniform vec3 eye;
 uniform vec3 forward;
 
-#define MAX_ITER 100
+#define MAX_ITER 1000
 #define MAX_DIST 100.0
 #define EPSILON 0.001
 #define PI 3.1415926353
@@ -32,43 +32,38 @@ vec3 hash( uvec3 x ) {
 
 
 
-float boxSDF(vec3 p, vec3 b) {
-    float r = 0.1;
-    vec3 q = abs(p) - b;
-    return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
-}
 
 float planeSDF(vec3 p) {
     return dot(p-vec3(0,1,0),vec3(0,-1,0));
 }
 
-float rootsSDF(vec3 p) {
-    float b1 = boxSDF(p, vec3(0.2, 1, 0.2));
-    float b2 = boxSDF(p-vec3(0.2,0,0), vec3(1, 0.1, 0.1));
-    return min(b1, b2);
-}
 
 float fractalDE(vec3 p) {
-    float t = -0.5;
-    p.xz = abs(p.xz);
-    p.xz *= mat2(cos(PI*-0.25), -sin(PI*-0.25),
-                 sin(PI*-0.25), cos(PI*-0.25));
+    vec3 z = p;
+	float dr = 1.0;
+	float r = 0.0;
+    int mandelbulb_iter_num = 100;
+    float mandelbulb_power = 8.0;
+	for (int i = 0; i < mandelbulb_iter_num ; i++)
+	{
+		r = length(z);
+		if (r>1.5) break;
+		
+		// convert to polar coordinates
+		float theta = acos(z.z / r);
+		float phi = atan(z.y, z.x);
 
-    float dist = rootsSDF(p);
-
-    for (float i=0; i<0; i+=1.0) {
-        float scale = pow(2.0, i);
-        vec3 p2 = p-vec3(1.1,0.5,0)/scale;
-        p2.xz *= mat2(cos(PI*0.25), -sin(PI*0.25),
-                      sin(PI*0.25), cos(PI*0.25));
-        p2.xz = abs(p2.xz);
-        p2.xz *= mat2(cos(PI*-0.25), -sin(PI*-0.25),
-                      sin(PI*-0.25), cos(PI*-0.25));
-        float dist2 = rootsSDF(p2*2.0*scale)*(0.5/scale);
-        dist = min(dist, dist2);
-        p = p2;
-    }
-    return dist;
+		dr =  pow( r, mandelbulb_power-1.0)*mandelbulb_power*dr + 1.0;
+		
+		// scale and rotate the point
+		float zr = pow( r,mandelbulb_power);
+		theta = theta*mandelbulb_power;
+		phi = phi*mandelbulb_power;
+		
+		// convert back to cartesian coordinates
+		z = p + zr*vec3(sin(theta)*cos(phi), sin(phi)*sin(theta), cos(theta));
+	}
+	return 0.5*log(r)*r/dr;
 }
 
 float DE(vec3 p) {
@@ -83,7 +78,7 @@ float colorDE(vec3 p, out vec3 color) {
     float dist = min(planeDist, fractalDist);
 
     if (dist == planeDist) {
-        color = vec3(1,0.8,0.2);
+        color = vec3(0.2,0.8,1.0);
     } else {
         color = vec3(1,1,1);
     }
@@ -184,7 +179,7 @@ vec3 marchRay(vec3 pos, vec3 dir, vec3 randDir) {
             return vec3(1.0); // white sky
         }
     }
-    return vec3(1,1,0);
+    return vec3(0);
 }
 
 
