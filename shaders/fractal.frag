@@ -38,7 +38,7 @@ float planeSDF(vec3 p) {
 }
 
 
-float fractalDE(vec3 p) {
+/*float fractalDE(vec3 p) {
     vec3 z = p;
 	float dr = 1.0;
 	float r = 0.0;
@@ -64,6 +64,24 @@ float fractalDE(vec3 p) {
 		z = p + zr*vec3(sin(theta)*cos(phi), sin(phi)*sin(theta), cos(theta));
 	}
 	return 0.5*log(r)*r/dr;
+}*/
+
+float fractalDE(vec3 p) {
+    vec2 z = vec2(p.xz*0.1);
+    vec2 c = vec2(-0.5, p.y*0.1*0.7);//p.xz*0.1;
+    vec2 dz = vec2(1,0);
+    float m2 = 1.0;
+    int madelbrot_iter_num = 100;
+    for (int i = 0; i < madelbrot_iter_num; i++)
+	{
+        dz = 2.0*vec2(z.x*dz.x-z.y*dz.y, z.x*dz.y + z.y*dz.x );
+        z = vec2( z.x*z.x - z.y*z.y, 2.0*z.x*z.y ) + c;
+        m2 = dot(z,z);
+        if (m2>200.0) break;
+    }
+    float lz = sqrt(m2);
+    float dist = lz*log(lz) / length(dz);
+    return max(dot(p+vec3(0,10,0), vec3(0,-1,0)), dist);
 }
 
 float DE(vec3 p) {
@@ -117,7 +135,7 @@ float shadowRay(vec3 pos, vec3 dir) {
 
 vec3 secondaryRay(vec3 pos, vec3 dir, vec3 randDir) {
     float totalDist = 0.0;
-    vec3 lightPos = vec3(5, -10, 10);
+    vec3 lightPos = vec3(50, -100, 100);
     lightPos += randDir*0.5;
 
     for (int i=0; i<MAX_ITER; i++) {
@@ -146,7 +164,7 @@ vec3 secondaryRay(vec3 pos, vec3 dir, vec3 randDir) {
 
 vec3 marchRay(vec3 pos, vec3 dir, vec3 randDir) {
     float totalDist = 0.0;
-    vec3 lightPos = vec3(5, -10, 10);
+    vec3 lightPos = vec3(50, -100, 100);
     lightPos += randDir*0.5;
 
     for (int i=0; i<MAX_ITER; i++) {
@@ -169,7 +187,7 @@ vec3 marchRay(vec3 pos, vec3 dir, vec3 randDir) {
             float shadow = shadowRay(pos+normal*0.001, lightDir);
             vec3 secondary = secondaryRay(pos+normal*0.001, randDir, randDir);
 
-            vec3 result = color * secondary + color * shadow;
+            vec3 result = color * secondary + color * shadow * max(0, dot(normal, lightDir));
 
             result = result / (result + vec3(1.0));
             result = pow(result, vec3(1.0/2.2));
@@ -190,8 +208,9 @@ void main() {
     float theta = 2.0 * PI * (1.0-mouse.x);
     float phi = 0.01 + (PI-0.01) * mouse.y;
 
+    vec3 forward = normalize(forward);
     vec3 right = normalize(cross(forward, vec3(0, 1, 0)));
-    vec3 up = cross(right, forward);
+    vec3 up = normalize(cross(right, forward));
 
     float fov = 10.0; // fix this
 
@@ -201,7 +220,7 @@ void main() {
     
     coord.xy += rand.xy*0.01;
 
-    vec3 target = forward*fov + coord.x * right + coord.y * up;
+    vec3 target = eye+ forward*fov + coord.x * right + coord.y * up;
 
     vec3 dir = normalize(target - eye);
     vec3 pos = eye;
