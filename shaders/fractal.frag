@@ -13,6 +13,7 @@ uniform float time;
 uniform int frame;
 uniform vec3 eye;
 uniform vec3 forward;
+uniform vec2 resolution;
 
 #define MAX_ITER 1000
 #define MAX_DIST 100.0
@@ -30,7 +31,11 @@ vec3 hash( uvec3 x ) {
     return vec3(x)*(1.0/float(0xffffffffU));
 }
 
-
+float sdBox( vec3 p, vec3 b )
+{
+  vec3 q = abs(p) - b;
+  return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+}
 
 
 float planeSDF(vec3 p) {
@@ -66,22 +71,32 @@ float planeSDF(vec3 p) {
 	return 0.5*log(r)*r/dr;
 }*/
 
-float fractalDE(vec3 p) {
-    vec2 z = vec2(p.xz*0.1);
-    vec2 c = vec2(-0.5, p.y*0.1*0.7);//p.xz*0.1;
-    vec2 dz = vec2(1,0);
-    float m2 = 1.0;
-    int madelbrot_iter_num = 100;
-    for (int i = 0; i < madelbrot_iter_num; i++)
-	{
-        dz = 2.0*vec2(z.x*dz.x-z.y*dz.y, z.x*dz.y + z.y*dz.x );
-        z = vec2( z.x*z.x - z.y*z.y, 2.0*z.x*z.y ) + c;
-        m2 = dot(z,z);
-        if (m2>200.0) break;
+float fractalDE(vec3 pt) {
+    //pt *= 0.2;
+    //pt.y += 0.8;
+    float scale = 1.0;
+    float iterations = 3.;
+
+    float dist = sdBox(vec3(pt.x, pt.y, pt.z), vec3(scale));
+    
+    float s = 1.;
+    
+    float da, db, dc;
+    
+    for(int i = 0; i < 6; i++) {
+        vec3 a = mod(pt * s, 2.0) - 1.0;
+        s *= iterations;
+        vec3 r = abs(1.0 - 3.0*abs(a));
+        
+        da = max(r.x, r.y);
+        db = max(r.y, r.z);
+        dc = max(r.z, r.x);
+        
+        float c = (min(da, min(db, dc)) - 1.) / s;
+        if ( c > dist) dist = c;
     }
-    float lz = sqrt(m2);
-    float dist = lz*log(lz) / length(dz);
-    return max(dot(p+vec3(0,10,0), vec3(0,-1,0)), dist);
+    
+    return dist;
 }
 
 float DE(vec3 p) {
@@ -96,7 +111,7 @@ float colorDE(vec3 p, out vec3 color) {
     float dist = min(planeDist, fractalDist);
 
     if (dist == planeDist) {
-        color = vec3(0.2,0.8,1.0);
+        color = vec3(1.0,0.2,0.2);
     } else {
         color = vec3(1,1,1);
     }
@@ -135,8 +150,8 @@ float shadowRay(vec3 pos, vec3 dir) {
 
 vec3 secondaryRay(vec3 pos, vec3 dir, vec3 randDir) {
     float totalDist = 0.0;
-    vec3 lightPos = vec3(50, -100, 100);
-    lightPos += randDir*0.5;
+    vec3 lightPos = vec3(27, -100, 89);
+    lightPos += randDir*5.0;
 
     for (int i=0; i<MAX_ITER; i++) {
         vec3 color = vec3(0);
@@ -164,8 +179,8 @@ vec3 secondaryRay(vec3 pos, vec3 dir, vec3 randDir) {
 
 vec3 marchRay(vec3 pos, vec3 dir, vec3 randDir) {
     float totalDist = 0.0;
-    vec3 lightPos = vec3(50, -100, 100);
-    lightPos += randDir*0.5;
+    vec3 lightPos = vec3(27, -100, 89);
+    lightPos += randDir*5.0;
 
     for (int i=0; i<MAX_ITER; i++) {
         vec3 color = vec3(0);
@@ -203,6 +218,7 @@ vec3 marchRay(vec3 pos, vec3 dir, vec3 randDir) {
 
 void main() {
     vec2 coord = (uv.xy*2.0 - 1.0) * 10.0;
+    coord.x *= resolution.x / resolution.y;
     vec3 color = vec3(1.0,0,1.0);
 
     float theta = 2.0 * PI * (1.0-mouse.x);
@@ -212,11 +228,11 @@ void main() {
     vec3 right = normalize(cross(forward, vec3(0, 1, 0)));
     vec3 up = normalize(cross(right, forward));
 
-    float fov = 10.0; // fix this
+    float fov = 20.0; // fix this
 
-    vec3 rand = hash(uvec3(uint(uv.x*800.0),
-                              uint(time*10.0),
-                              uint(uv.y*800.0)));
+    vec3 rand = hash(uvec3(uint(uv.x*resolution.x),
+                           uint(time*10.0),
+                           uint(uv.y*resolution.y)));
     
     coord.xy += rand.xy*0.01;
 
@@ -229,10 +245,10 @@ void main() {
 
     color = marchRay(pos, dir, randDir);
 
-    vec3 average = imageLoad(lastFrame, ivec2(uv.xy * 800.0)).rgb;
+    vec3 average = imageLoad(lastFrame, ivec2(uv.xy * resolution)).rgb;
     average -= average / float(frame);
     average += color / float(frame);
-    imageStore(nextFrame, ivec2(uv.xy * 800), vec4(average, 1));
+    imageStore(nextFrame, ivec2(uv.xy * resolution), vec4(average, 1));
 
     colorOut = vec4(average, 1.0);
 }

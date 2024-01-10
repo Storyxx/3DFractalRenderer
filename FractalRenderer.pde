@@ -23,8 +23,9 @@ Robot robot;
 GLWindow window;
 
 void setup() {
-  size(800, 800, P2D);
-  surface.setLocation(1000, 100);
+  //size(800, 800, P2D);
+  //surface.setLocation(1000, 100);
+  fullScreen(P2D);
  
   String fragmentShaderFile = "shaders/fractal.frag";
   fractalShader = loadShader(fragmentShaderFile, "shaders/quad.vert");
@@ -37,7 +38,7 @@ void setup() {
     }
   };
   
-  buffer = createGraphics(800, 800, P2D);
+  buffer = createGraphics(width, height, P2D);
 
   Timer timer = new Timer();
   timer.schedule(task , new Date(), 1000); // repeat the check every second
@@ -91,11 +92,13 @@ void draw() {
   fractalShader.set("frame", frame);
   fractalShader.set("eye", camPos);
   fractalShader.set("forward", camDir);
+  fractalShader.set("resolution", width, height);
   
   newFractalShader.set("time", frameCount/100.0);
   newFractalShader.set("frame", frame);
   newFractalShader.set("eye", camPos);
   newFractalShader.set("forward", camDir);
+  newFractalShader.set("resolution", width, height);
 
   buffer.beginDraw();
   gl3.glBindImageTexture(3, lastFrameTexture, 0, false, 0, GL2GL3.GL_READ_ONLY, GL2GL3.GL_RGBA32F);
@@ -130,6 +133,7 @@ void draw() {
   buffer.beginDraw();
   gl3.glBindImageTexture(3, lastFrameTexture, 0, false, 0, GL2GL3.GL_WRITE_ONLY, GL2GL3.GL_RGBA32F);
   gl3.glBindImageTexture(4, nextFrameTexture, 0, false, 0, GL2GL3.GL_READ_ONLY, GL2GL3.GL_RGBA32F);
+  swapShader.set("resolution", width, height);
   buffer.shader(swapShader);
   buffer.rect(0, 0, width, height);
   buffer.endDraw();
